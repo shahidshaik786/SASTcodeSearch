@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <patterns_file> <directory_path>"
+  exit 1
+fi
+
+patterns_file="$1"
+directory_path="$2"
+
+# Check if the patterns file exists
+if [ ! -f "$patterns_file" ]; then
+  echo "Patterns file '$patterns_file' not found."
+  exit 1
+fi
+
+# Function to search for patterns in files recursively
+search_files() {
+  local patterns_file="$1"
+  local dir="$2"
+  
+  # Print table header
+  echo -e "File Path\tMatching Pattern"
+
+  # Loop through each pattern in the patterns file
+  while IFS= read -r pattern; do
+    # Find all files in the directory and its subdirectories
+    find "$dir" -type f | while read -r file; do
+      # Check if the file contains the pattern
+      if grep -q -E "$pattern" "$file"; then
+        # Print the file path and matching pattern
+        echo -e "$file\t$pattern"
+      fi
+    done
+  done < "$patterns_file"
+}
+
+# Call the search_files function with the provided arguments
+search_files "$patterns_file" "$directory_path"
+
+
+
+####Usage#######
+./search_strings.sh patterns.txt "/path/to/search"
