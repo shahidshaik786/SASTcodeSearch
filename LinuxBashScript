@@ -15,31 +15,54 @@ if [ ! -f "$patterns_file" ]; then
   exit 1
 fi
 
-# Function to search for patterns in files recursively
-search_files() {
-  local patterns_file="$1"
+# Separate normal strings and regex patterns from the patterns file
+normal_strings=$(grep -E -v "^/.*" "$patterns_file")
+regex_patterns=$(grep -E "^/.*" "$patterns_file")
+
+# Function to search for normal strings in files recursively
+search_normal_strings() {
+  local strings="$1"
   local dir="$2"
   
   # Print table header
-  echo -e "File Path\tMatching Pattern"
+  echo -e "File Path\tLine Number\tMatching String (Normal)"
+  
+  # Loop through each normal string
+  while IFS= read -r string; do
+    # Find all files in the directory and its subdirectories
+    find "$dir" -type f | while read -r file; do
+      # Check if the file contains the normal string
+      if grep -q -F "$string" "$file"; then
+        # Print the file path, line number, and matching string
+        grep -n -F "$string" "$file" | sed -e "s/:/\t/g" -e "s/\t/:\t/"
+      fi
+    done
+  done <<< "$strings"
+}
 
-  # Loop through each pattern in the patterns file
+# Function to search for regex patterns in files recursively
+search_regex_patterns() {
+  local patterns="$1"
+  local dir="$2"
+  
+  # Print table header
+  echo -e "File Path\tLine Number\tMatching String (Regex)"
+  
+  # Loop through each regex pattern
   while IFS= read -r pattern; do
     # Find all files in the directory and its subdirectories
     find "$dir" -type f | while read -r file; do
-      # Check if the file contains the pattern
+      # Check if the file contains the regex pattern
       if grep -q -E "$pattern" "$file"; then
-        # Print the file path and matching pattern
-        echo -e "$file\t$pattern"
+        # Print the file path, line number, and matching string
+        grep -n -E "$pattern" "$file" | sed -e "s/:/\t/g" -e "s/\t/:\t/"
       fi
     done
-  done < "$patterns_file"
+  done <<< "$patterns"
 }
 
-# Call the search_files function with the provided arguments
-search_files "$patterns_file" "$directory_path"
+# Call the search_normal_strings function with normal strings
+search_normal_strings "$normal_strings" "$directory_path"
 
-
-
-####Usage#######
-./search_strings.sh patterns.txt "/path/to/search"
+# Call the search_regex_patterns function with regex patterns
+search_regex_patterns "$regex_patterns" "$directory_path"
